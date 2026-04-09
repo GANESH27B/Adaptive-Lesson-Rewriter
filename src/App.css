@@ -97,18 +97,29 @@ header {
   }
 
   .brand-name {
-    font-size: 3rem;
+    font-size: 3.5rem;
     letter-spacing: -2px;
   }
 
   .brand-tagline {
-    font-size: 1rem;
-    letter-spacing: 2px;
+    font-size: 1.1rem;
+    letter-spacing: 1px;
+    margin-top: 1rem;
   }
 
   .brand-logo {
-    width: 100px;
-    height: 100px;
+    width: 80px;
+    height: 80px;
+  }
+}
+
+@media (max-width: 480px) {
+  .brand-name {
+    font-size: 2.5rem;
+  }
+  
+  .brand-tagline {
+    font-size: 0.9rem;
   }
 }
 
@@ -638,4 +649,64 @@ textarea.lesson-input:focus {
 .camera-controls p {
   font-size: 0.9rem;
   color: var(--text-secondary);
+}
+
+/* More Mobile Optimizations */
+@media (max-width: 600px) {
+  .tabs {
+    overflow-x: auto;
+    padding-bottom: 5px;
+    justify-content: flex-start;
+  }
+  
+  .tab-btn {
+    white-space: nowrap;
+    padding: 0.6rem 1rem;
+    font-size: 0.85rem;
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .section-header div {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .extended-actions {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .camera-modal {
+    width: 95%;
+    padding: 1rem;
+    border-radius: 16px;
+  }
+
+  .video-container {
+    aspect-ratio: 3/4; /* Better for portrait phone scanning */
+  }
+
+  .lesson-input {
+    min-height: 200px;
+  }
+
+  .image-preview-container {
+    width: 100px;
+    height: 70px;
+  }
+}
+
+@media (max-width: 400px) {
+  .extended-actions {
+    grid-template-columns: 1fr;
+  }
+  
+  .capture-btn {
+    width: 60px;
+    height: 60px;
+  }
 }
