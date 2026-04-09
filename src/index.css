@@ -3,15 +3,15 @@
   --bg-card: rgba(30, 41, 59, 0.7);
   --text-primary: #f8fafc;
   --text-secondary: #94a3b8;
-  --accent-color: #3b82f6;
-  --accent-hover: #60a5fa;
-  --success-color: #10b981;
-  --warning-color: #f59e0b;
-  --danger-color: #ef4444;
-  --border-color: rgba(255, 255, 255, 0.1);
-  --glass-border: 1px solid rgba(255, 255, 255, 0.1);
-  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-  --gradient-text: linear-gradient(90deg, #38bdf8, #818cf8);
+  --accent-color: #60a5fa;
+  --accent-hover: #93c5fd;
+  --success-color: #34d399;
+  --warning-color: #fbbf24;
+  --danger-color: #f87171;
+  --border-color: rgba(255, 255, 255, 0.15);
+  --glass-border: 1px solid rgba(255, 255, 255, 0.15);
+  --glass-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.45);
+  --gradient-text: linear-gradient(90deg, #60a5fa, #a78bfa);
 }
 
 * {

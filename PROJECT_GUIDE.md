@@ -1,4 +1,4 @@
-# 📚 Adaptive Lesson Rewriter: Project Overview
+# 📚 Adaptive Multi-Modal AI Learning System: Project Overview
 
 An intelligent educational platform designed to transform complex learning materials into accessible, engaging, and multi-dimensional content.
 

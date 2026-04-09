@@ -138,7 +138,7 @@ function App() {
               "Authorization": `Bearer ${openRouterKey}`,
               "Content-Type": "application/json",
               "HTTP-Referer": window.location.origin,
-              "X-Title": "Adaptive Lesson Rewriter",
+              "X-Title": "Adaptive Multi-Modal AI Learning System",
             },
             body: JSON.stringify({
               model: modelName,
@@ -230,7 +230,7 @@ function App() {
             "Authorization": `Bearer ${openRouterKey}`,
             "Content-Type": "application/json",
             "HTTP-Referer": window.location.origin,
-            "X-Title": "Adaptive Lesson Rewriter",
+            "X-Title": "Adaptive Multi-Modal AI Learning System",
           },
           body: JSON.stringify({
             model: "google/gemini-2.0-flash-001",
@@ -323,7 +323,7 @@ function App() {
             "Authorization": `Bearer ${openRouterKey}`,
             "Content-Type": "application/json",
             "HTTP-Referer": window.location.origin,
-            "X-Title": "Adaptive Lesson Rewriter",
+            "X-Title": "Adaptive Multi-Modal AI Learning System",
           },
           body: JSON.stringify({
             model: "google/gemini-2.0-flash-001",
@@ -371,7 +371,7 @@ function App() {
             "Authorization": `Bearer ${openRouterKey}`,
             "Content-Type": "application/json",
             "HTTP-Referer": window.location.origin,
-            "X-Title": "Adaptive Lesson Rewriter",
+            "X-Title": "Adaptive Multi-Modal AI Learning System",
           },
           body: JSON.stringify({
             model: "google/gemini-2.0-flash-001",
@@ -459,7 +459,7 @@ function App() {
             "Authorization": `Bearer ${openRouterKey}`,
             "Content-Type": "application/json",
             "HTTP-Referer": window.location.origin,
-            "X-Title": "Adaptive Lesson Rewriter",
+            "X-Title": "Adaptive Multi-Modal AI Learning System",
           },
           body: JSON.stringify({
             model: modelName,
@@ -550,8 +550,13 @@ function App() {
   return (
     <div className="app-container">
       <header>
-        <h1>Adaptive <span className="text-gradient">Lesson Rewriter</span></h1>
-        <p>Intelligently transform your educational content into simplified, advanced, and accessible formats while preserving the core meaning with real-time drift detection.</p>
+        <div className="brand-container">
+          <img src="/favicon.jpeg" alt="NeuroEduAI Logo" className="brand-logo" />
+          <div className="brand-text">
+            <span className="brand-name">NeuroEdu<span className="brand-ai">AI</span></span>
+            <span className="brand-tagline">Adaptive Multi-Modal AI Learning System for Story-Based Content Generation and Personalization</span>
+          </div>
+        </div>
       </header>
 
       <main className="main-content">
@@ -984,7 +989,7 @@ function App() {
               doc.setFontSize(13);
               doc.setFont('helvetica', 'bold');
               doc.setTextColor(255, 255, 255);
-              doc.text('Adaptive Lesson Pack', margin, 11);
+              doc.text('Adaptive AI Learning Pack', margin, 11);
               doc.setFontSize(9);
               doc.setFont('helvetica', 'normal');
               doc.text(new Date().toLocaleDateString(), pageW - margin, 11, { align: 'right' });
