@@ -1,7 +1,13 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { jsPDF } from 'jspdf';
 import * as mammoth from 'mammoth';
-import { RefreshCw, Download, FileText, Activity, BrainCircuit, Key, AlertCircle, Image, Volume2, Video, Globe, Upload, ListChecks, CheckCircle2, XCircle } from 'lucide-react';
+import * as pdfjsLib from 'pdfjs-dist';
+// @ts-ignore
+import pdfWorker from 'pdfjs-dist/build/pdf.worker?url';
+import { RefreshCw, Download, FileText, Activity, BrainCircuit, Key, AlertCircle, Image, Volume2, Video, Globe, Upload, ListChecks, CheckCircle2, XCircle, Camera, Check, X } from 'lucide-react';
+
+// Initialize PDF.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 // import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 import './App.css';
 
@@ -21,7 +27,141 @@ function App() {
   const [workflowStep, setWorkflowStep] = useState('input'); // input, choice, processing, results
   const [quizScore, setQuizScore] = useState(0);
   const [quizAnswers, setQuizAnswers] = useState({}); // {questionIdx: answerIdx}
+  const [showCamera, setShowCamera] = useState(false);
+  const [cameraLoading, setCameraLoading] = useState(false);
+  const [facingMode, setFacingMode] = useState('environment');
+  const [capturedImage, setCapturedImage] = useState(null);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
   const fileInputRef = useRef(null);
+  const imageGalleryRef = useRef(null);
+
+  const startCamera = async () => {
+    setShowCamera(true);
+    setCameraLoading(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: facingMode }
+      });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (err) {
+      console.error(err);
+      setErrorMsg("Could not access camera. Please check permissions.");
+      setShowCamera(false);
+    } finally {
+      setCameraLoading(false);
+    }
+  };
+
+  const switchCamera = () => {
+    const newMode = facingMode === 'environment' ? 'user' : 'environment';
+    setFacingMode(newMode);
+  };
+
+  useEffect(() => {
+    if (showCamera) {
+      stopCamera();
+      startCamera();
+    }
+  }, [facingMode]);
+
+  const stopCamera = () => {
+    if (videoRef.current && videoRef.current.srcObject) {
+      const tracks = videoRef.current.srcObject.getTracks();
+      tracks.forEach(track => track.stop());
+    }
+    setShowCamera(false);
+  };
+
+  const captureImage = async () => {
+    if (!videoRef.current || !canvasRef.current) return;
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    const base64Image = canvas.toDataURL('image/jpeg', 0.8);
+    setCapturedImage(base64Image);
+    stopCamera();
+
+    processCapturedImage(base64Image);
+  };
+
+  const processCapturedImage = async (base64) => {
+    setIsProcessing(true);
+    setErrorMsg("");
+
+    // Remove data:image/jpeg;base64, prefix
+    const base64Data = base64.split(',')[1];
+    const openRouterKey = import.meta.env.VITE_OPENROUTER_API_KEY;
+
+    try {
+      if (!openRouterKey || openRouterKey === 'sk-or-v1-YOUR_OPENROUTER_KEY_HERE') {
+        throw new Error("API Key not configured");
+      }
+
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${openRouterKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": window.location.origin,
+          "X-Title": "NeuroEduAI OCR",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.0-flash-001",
+          messages: [
+            {
+              role: "user",
+              content: [
+                { type: "text", text: "Please analyze this educational image comprehensively. Extract all readable text, but also describe any diagrams, charts, or important visual context and background data provided in the image. Combine both the text and visual analysis into a single coherent educational lesson structure." },
+                {
+                  type: "image_url",
+                  image_url: {
+                    url: `data:image/jpeg;base64,${base64Data}`
+                  }
+                }
+              ]
+            }
+          ]
+        })
+      });
+
+      if (!response.ok) throw new Error("Vision API failed");
+      const data = await response.json();
+      const extracted = data.choices[0].message.content.trim();
+
+      if (extracted) {
+        setInputText(extracted);
+      } else {
+        setErrorMsg("Could not detect any text in the image.");
+      }
+    } catch (err) {
+      console.error(err);
+      setErrorMsg("Failed to analyze image. Ensure your API key is correct.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleImageGalleryUpload = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64 = e.target.result;
+      setCapturedImage(base64);
+      setShowCamera(false);
+      processCapturedImage(base64);
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleFileUpload = async (event) => {
     const file = event.target.files[0];
@@ -32,7 +172,7 @@ function App() {
 
     try {
       const extension = file.name.split('.').pop().toLowerCase();
-      
+
       if (extension === 'txt') {
         const text = await file.text();
         setInputText(text);
@@ -41,17 +181,26 @@ function App() {
         const result = await mammoth.extractRawText({ arrayBuffer });
         setInputText(result.value);
       } else if (extension === 'pdf') {
-        const formData = new FormData();
-        formData.append('file', file);
-        
-        const response = await fetch('/extract-text', {
-          method: 'POST',
-          body: formData
-        });
-        
-        if (!response.ok) throw new Error("Server extraction failed");
-        const data = await response.json();
-        setInputText(data.text || "");
+        const arrayBuffer = await file.arrayBuffer();
+
+        const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+        const pdf = await loadingTask.promise;
+        let fullText = "";
+
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const textContent = await page.getTextContent();
+          const pageText = textContent.items
+            .map(item => item.str)
+            .join(" ");
+          fullText += pageText + "\n";
+        }
+
+        if (!fullText.trim()) {
+          throw new Error("Could not extract text from PDF. It might be an image-only PDF.");
+        }
+
+        setInputText(fullText.trim());
       } else {
         setErrorMsg("Unsupported file type. Please use .txt, .docx, or .pdf");
       }
@@ -565,16 +714,16 @@ function App() {
           <div className="section-header">
             <h2><FileText className="icon" /> Original Content</h2>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                style={{ display: 'none' }} 
+              <input
+                type="file"
+                ref={fileInputRef}
+                style={{ display: 'none' }}
                 accept=".txt,.docx,.pdf"
                 onChange={handleFileUpload}
               />
-              <button 
-                className="action-btn" 
-                onClick={() => fileInputRef.current.click()} 
+              <button
+                className="action-btn"
+                onClick={() => fileInputRef.current.click()}
                 style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}
                 title="Upload Document (.txt, .docx, .pdf)"
               >
@@ -585,6 +734,14 @@ function App() {
                   New
                 </button>
               )}
+              <button
+                className="action-btn"
+                onClick={startCamera}
+                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}
+                title="Take Photo of Lesson"
+              >
+                <Camera size={18} />
+              </button>
               <button className="action-btn" onClick={handleRewrite} disabled={isProcessing}>
                 <RefreshCw className={`icon ${isProcessing ? 'animate-spin' : ''}`} size={18} />
                 {isProcessing ? 'Analyzing...' : 'Rewrite'}
@@ -592,10 +749,60 @@ function App() {
             </div>
           </div>
 
+          {showCamera && (
+            <div className="camera-overlay">
+              <div className="camera-modal glass-panel">
+                <div className="camera-header">
+                  <h3>Scan Educational Content</h3>
+                  <button onClick={stopCamera} className="close-cam-btn"><X size={20} /></button>
+                </div>
+                <div className="video-container">
+                  {cameraLoading && <div className="cam-loading"><RefreshCw className="animate-spin" /> Starting Camera...</div>}
+                  <video ref={videoRef} autoPlay playsInline muted />
+                  <canvas ref={canvasRef} style={{ display: 'none' }} />
+                </div>
+                <div className="camera-controls">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+                    <input
+                      type="file"
+                      ref={imageGalleryRef}
+                      style={{ display: 'none' }}
+                      accept="image/*"
+                      onChange={handleImageGalleryUpload}
+                    />
+                    <button onClick={() => imageGalleryRef.current.click()} className="rotate-cam-btn" title="Pick from Gallery">
+                      <Image size={24} />
+                    </button>
+                    <button onClick={captureImage} className="capture-btn">
+                      <div className="inner-circle" />
+                    </button>
+                    <button onClick={switchCamera} className="rotate-cam-btn" title="Switch Camera">
+                      <RefreshCw size={24} />
+                    </button>
+                  </div>
+                  <p>Mode: {facingMode === 'environment' ? 'Back' : 'Front'} Camera</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {errorMsg && (
             <div style={{ color: 'var(--danger-color)', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem' }}>
               <AlertCircle size={16} />
               {errorMsg}
+            </div>
+          )}
+
+          {capturedImage && (
+            <div className="image-preview-container">
+              <img src={capturedImage} alt="Captured scan" className="scan-preview" />
+              <button
+                className="clear-img-btn"
+                onClick={() => setCapturedImage(null)}
+                title="Remove image"
+              >
+                <X size={14} />
+              </button>
             </div>
           )}
 
@@ -749,8 +956,8 @@ function App() {
                         <p style={{ marginBottom: '0.75rem' }}>Select a language to translate the current content:</p>
                         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                           {[
-                            'Hindi', 'Telugu', 'Tamil', 'Kannada', 'Malayalam', 
-                            'Bengali', 'Marathi', 'Gujarati', 'Punjabi', 
+                            'Hindi', 'Telugu', 'Tamil', 'Kannada', 'Malayalam',
+                            'Bengali', 'Marathi', 'Gujarati', 'Punjabi',
                             'Spanish', 'French', 'German', 'Japanese'
                           ].map(lang => (
                             <button
@@ -808,6 +1015,30 @@ function App() {
                         >
                           Open generated image in new tab ↗
                         </a>
+                        <button
+                          onClick={() => window.open(`https://www.google.com/search?q=${encodeURIComponent(actionResult.prompt)}`, '_blank')}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.5rem',
+                            width: '100%',
+                            marginTop: '1rem',
+                            background: 'rgba(255,255,255,0.08)',
+                            border: '1px solid rgba(255,255,255,0.15)',
+                            color: 'white',
+                            padding: '0.75rem',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            fontSize: '0.85rem',
+                            fontWeight: 500,
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseOver={(e) => e.target.style.background = 'rgba(255,255,255,0.15)'}
+                          onMouseOut={(e) => e.target.style.background = 'rgba(255,255,255,0.08)'}
+                        >
+                          <Globe size={16} /> Search on Google for more data
+                        </button>
                       </div>
                     </div>
                   ) : activeAction === 'audio' && typeof actionResult === 'object' && actionResult?.type === 'audio' ? (
@@ -890,10 +1121,10 @@ function App() {
                               const isSelected = quizAnswers[qIdx] === oIdx;
                               const isCorrect = q.correct === oIdx;
                               const showFeedback = quizAnswers[qIdx] !== undefined;
-                              
+
                               let borderColor = 'rgba(255,255,255,0.1)';
                               let bgColor = 'rgba(255,255,255,0.03)';
-                              
+
                               if (showFeedback) {
                                 if (isCorrect) {
                                   borderColor = '#10b981';
@@ -936,7 +1167,7 @@ function App() {
                         </div>
                       ))}
                       <div style={{ textAlign: 'center', marginTop: '1rem' }}>
-                        <button 
+                        <button
                           onClick={() => { setQuizAnswers({}); handleExtendedAction('quiz'); }}
                           style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'white', padding: '0.5rem 1rem', borderRadius: '6px', fontSize: '0.85rem' }}
                         >
